@@ -632,24 +632,22 @@ a {
 .letter-photo,
 .secret-image,
 .final-photo {
-    opacity: 0;
-    transform: scale(1.025);
-    transition:
-        opacity .7s ease,
-        transform 1s var(--ease-out);
-}
-
-.gallery-photo.asset-loaded,
-.story-image.asset-loaded,
-.letter-photo.asset-loaded,
-.secret-image.asset-loaded,
-.final-photo.asset-loaded {
+    display: block;
     opacity: 1;
     transform: scale(1);
+    transition: transform 1s var(--ease-out), filter .7s ease;
+}
+
+.gallery-card:hover .gallery-photo,
+.story-image-wrap:hover .story-image,
+.letter-photo:hover,
+.final-photo:hover {
+    transform: scale(1.025);
 }
 
 .asset-missing {
-    opacity: .2 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
 /* =========================================================
@@ -789,6 +787,39 @@ a {
 .video-shell.visible {
     opacity: 1;
     transform: translateY(0) scale(1);
+}
+
+.video-sound-button {
+    position: absolute;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    z-index: 5;
+    border: 1px solid rgba(255,255,255,.7);
+    border-radius: 999px;
+    padding: 12px 20px;
+    background: rgba(61,31,44,.74);
+    color: #fff;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 12px 30px rgba(61,31,44,.18);
+    animation: soundFloat 1.8s ease-in-out infinite;
+    transition: transform .3s ease, opacity .3s ease;
+}
+
+.video-sound-button:hover {
+    transform: translateX(-50%) translateY(-3px) scale(1.035);
+}
+
+@keyframes soundFloat {
+    0%, 100% { margin-bottom: 0; }
+    50% { margin-bottom: 5px; }
+}
+
+.video-sound-button.sound-unlocked {
+    opacity: 0;
 }
 
 .main-video {
@@ -1929,7 +1960,8 @@ a {
                             class="gallery-photo"
                             src="image/Okay%20fine%20this%20one%27s%20actually%20cute.jpeg"
                             alt="Okay fine, this one's actually cute"
-                            loading="lazy"
+                            loading="eager"
+                            decoding="async"
                         >
 
                     </div>
@@ -1982,7 +2014,8 @@ a {
                             class="gallery-photo"
                             src="image/certified%20goofy.jpeg"
                             alt="Certified goofy"
-                            loading="lazy"
+                            loading="eager"
+                            decoding="async"
                         >
 
                     </div>
@@ -2008,7 +2041,8 @@ a {
                             class="gallery-photo"
                             src="image/this%20has%20to%20be%20here.jpeg"
                             alt="This has to be here"
-                            loading="lazy"
+                            loading="eager"
+                            decoding="async"
                         >
 
                     </div>
@@ -2055,12 +2089,9 @@ a {
                     class="main-video"
                     id="birthdayVideo"
                     autoplay
-                    muted
                     playsinline
                     preload="auto"
                     controls
-                    playsinline
-                    preload="metadata"
                 >
                     <source
                         src="video/video.mp4"
@@ -2719,6 +2750,8 @@ enterButton.addEventListener(
 
 function startExperience() {
 
+    armBirthdayAudio();
+
     hideScreen(ohoScreen);
 
     /*
@@ -3002,91 +3035,104 @@ secretButton.addEventListener(
    11. VIDEO BEHAVIOUR
 ========================================================= */
 
-/*
-   Scroll-triggered video:
-   - The video fades/slides in through .reveal.
-   - As soon as the video enters the viewport, it plays itself.
-   - It is muted so modern browsers allow autoplay.
-   - When it leaves the viewport, it pauses to avoid wasting
-     battery/data and keeps the experience clean.
-*/
-
 let videoHasEntered = false;
+let audioPlaybackArmed = false;
+
+/* Called by the ENTER button, which is a real user gesture. */
+function armBirthdayAudio() {
+    audioPlaybackArmed = true;
+
+    if (!birthdayVideo) return;
+
+    birthdayVideo.muted = false;
+    birthdayVideo.removeAttribute("muted");
+    birthdayVideo.volume = 1;
+
+    /* Unlock the media element while the browser still has the click gesture. */
+    const unlock = birthdayVideo.play();
+
+    if (unlock && typeof unlock.then === "function") {
+        unlock.then(function() {
+            birthdayVideo.pause();
+            try { birthdayVideo.currentTime = 0; } catch (e) {}
+        }).catch(function() {});
+    }
+}
+
+function showSoundFallback() {
+    if (document.getElementById("videoSoundButton")) return;
+
+    const shell = birthdayVideo.closest(".video-shell");
+    if (!shell) return;
+
+    const button = document.createElement("button");
+    button.id = "videoSoundButton";
+    button.type = "button";
+    button.className = "video-sound-button";
+    button.textContent = "🔊 Tap for sound";
+    shell.appendChild(button);
+
+    button.addEventListener("click", function(event) {
+        event.stopPropagation();
+        birthdayVideo.muted = false;
+        birthdayVideo.removeAttribute("muted");
+        birthdayVideo.volume = 1;
+
+        birthdayVideo.play().then(function() {
+            button.classList.add("sound-unlocked");
+            setTimeout(function() { button.remove(); }, 450);
+        }).catch(function() {});
+    });
+}
 
 function playBirthdayVideo() {
     if (!birthdayVideo) return;
 
-    birthdayVideo.muted = true;
-    birthdayVideo.setAttribute("muted", "");
-    birthdayVideo.setAttribute("playsinline", "");
+    birthdayVideo.muted = false;
+    birthdayVideo.removeAttribute("muted");
+    birthdayVideo.volume = 1;
 
     const promise = birthdayVideo.play();
 
     if (promise && typeof promise.catch === "function") {
         promise.catch(function() {
-            /*
-               Some browsers may still block autoplay.
-               A muted retry is made once on the next user
-               interaction without breaking the page.
-            */
+            /* Browser policy may block audible autoplay. Keep the video playing
+               and provide an explicit one-tap sound fallback. */
+            birthdayVideo.muted = true;
+            birthdayVideo.setAttribute("muted", "");
+            const muted = birthdayVideo.play();
+            if (muted && typeof muted.catch === "function") muted.catch(function() {});
+            showSoundFallback();
         });
     }
 }
 
-const videoObserver =
-    new IntersectionObserver(
-        function(entries) {
-            entries.forEach(function(entry) {
+const videoObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+            videoHasEntered = true;
 
-                if (entry.isIntersecting) {
+            const shell = birthdayVideo.closest(".video-shell");
+            if (shell) shell.classList.add("visible");
 
-                    videoHasEntered = true;
-
-                    /* Ensure the reveal animation is active. */
-                    const shell = birthdayVideo.closest(".video-shell");
-                    if (shell) shell.classList.add("visible");
-
-                    playBirthdayVideo();
-
-                } else if (videoHasEntered) {
-
-                    birthdayVideo.pause();
-
-                }
-
-            });
-        },
-        {
-            threshold: 0.28,
-            rootMargin: "0px 0px -8% 0px"
+            setTimeout(function() {
+                if (videoHasEntered) playBirthdayVideo();
+            }, 180);
+        } else if (videoHasEntered) {
+            birthdayVideo.pause();
         }
-    );
+    });
+}, {
+    threshold: 0.28,
+    rootMargin: "0px 0px -8% 0px"
+});
 
 videoObserver.observe(birthdayVideo);
 
-/*
-   If autoplay was blocked before, the first touch/click/scroll
-   gives us another chance, still muted.
-*/
-["pointerdown", "touchstart", "keydown"].forEach(function(eventName) {
-    window.addEventListener(eventName, function() {
-        if (videoHasEntered && birthdayVideo.paused) {
-            playBirthdayVideo();
-        }
-    }, { passive: true });
-});
-
-/*
-   Helpful fallback if the MP4 fails to load.
-*/
 birthdayVideo.addEventListener("error", function() {
     const note = document.querySelector(".video-note");
-    if (note) {
-        note.textContent =
-            "The little movie is taking a moment to load... ♡";
-    }
+    if (note) note.textContent = "The little movie is taking a moment to load... ♡";
 });
-
 
 /* =========================================================
    12. REPLAY
