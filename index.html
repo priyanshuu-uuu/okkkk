@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#f6cbd8">
 <meta name="description" content="A little birthday experience made for Gourja.">
-<title>For Gourja ♡</ti
+<title>For Gourja ♡</title>
+
 <!-- =========================================================
      FONTS
 ========================================================= -->
@@ -640,6 +641,7 @@ a {
 .gallery-card:hover .gallery-photo,
 .story-image-wrap:hover .story-image,
 .letter-photo:hover,
+.secret-image-wrap:hover .secret-image,
 .final-photo:hover {
     transform: scale(1.025);
 }
@@ -1605,7 +1607,7 @@ a {
 
         <img
             class="intro-image"
-            src="image/name%20screen.jpeg"
+            src="image/name screen.jpeg"
             alt="Goofy welcome"
         >
 
@@ -1670,7 +1672,7 @@ a {
 
         <img
             class="intro-image"
-            src="image/birthdate%20screen.jpeg"
+            src="image/birthdate screen.jpeg"
             alt="Goofy birthday"
         >
 
@@ -1738,7 +1740,7 @@ a {
 
         <img
             class="intro-image"
-            src="image/oho%20screen.jpeg"
+            src="image/oho screen.jpeg"
             alt="Birthday surprise"
         >
 
@@ -1854,9 +1856,10 @@ a {
 
                     <img
                         class="story-image"
-                        src="image/a%20little%20story1.jpeg"
+                        src="image/a little story1.jpeg"
                         alt="A little story"
-                        loading="lazy"
+                        loading="eager"
+                            decoding="async"
                     >
 
                 </div>
@@ -1882,9 +1885,10 @@ a {
 
                     <img
                         class="story-image"
-                        src="image/a%20little%20story2.jpeg"
+                        src="image/a little story2.jpeg"
                         alt="Another little story"
-                        loading="lazy"
+                        loading="eager"
+                            decoding="async"
                     >
 
                 </div>
@@ -1957,7 +1961,7 @@ a {
 
                         <img
                             class="gallery-photo"
-                            src="image/Okay%20fine%20this%20one%27s%20actually%20cute.jpeg"
+                            src="image/Okay fine this one's actually cute.jpeg"
                             alt="Okay fine, this one's actually cute"
                             loading="eager"
                             decoding="async"
@@ -1984,7 +1988,7 @@ a {
 
                         <img
                             class="gallery-photo"
-                            src="image/Yeah%20you%27re%20photogenicUnfortunatly.jpeg"
+                            src="image/Yeah you're photogenicUnfortunatly.jpeg"
                             alt="Yeah, you're photogenic"
                             loading="eager"
                             fetchpriority="high"
@@ -2011,7 +2015,7 @@ a {
 
                         <img
                             class="gallery-photo"
-                            src="image/certified%20goofy.jpeg"
+                            src="image/certified goofy.jpeg"
                             alt="Certified goofy"
                             loading="eager"
                             decoding="async"
@@ -2038,7 +2042,7 @@ a {
 
                         <img
                             class="gallery-photo"
-                            src="image/this%20has%20to%20be%20here.jpeg"
+                            src="image/this has to be here.jpeg"
                             alt="This has to be here"
                             loading="eager"
                             decoding="async"
@@ -2121,9 +2125,10 @@ a {
 
             <img
                 class="letter-photo reveal"
-                src="image/the%20letter.jpeg"
+                src="image/the letter.jpeg"
                 alt="A little letter"
-                loading="lazy"
+                loading="eager"
+                            decoding="async"
             >
 
             <h2 class="letter-heading reveal reveal-delay-1">
@@ -2354,9 +2359,10 @@ a {
             <img
                 class="secret-image"
                 id="secretImage"
-                src="image/secret%20reveal.jpeg"
+                src="image/secret reveal.jpeg"
                 alt="Secret birthday reveal"
-                loading="lazy"
+                loading="eager"
+                            decoding="async"
             >
 
             <p
@@ -2461,16 +2467,18 @@ a {
 
                 <img
                     class="final-photo final-photo-left reveal"
-                    src="image/grand%20birthday%20reveal1.jpeg"
+                    src="image/grand birthday reveal1.jpeg"
                     alt="Gourja birthday photo one"
-                    loading="lazy"
+                    loading="eager"
+                            decoding="async"
                 >
 
                 <img
                     class="final-photo final-photo-right reveal reveal-delay-1"
-                    src="image/grand%20birthday%20reveal2.jpeg"
+                    src="image/grand birthday reveal2.jpeg"
                     alt="Gourja birthday photo two"
-                    loading="lazy"
+                    loading="eager"
+                            decoding="async"
                 >
 
             </div>
@@ -2510,9 +2518,10 @@ a {
 
             <img
                 class="last-photo reveal reveal-delay-3"
-                src="image/grand%20birthday%20reveal2.jpeg"
+                src="image/grand birthday reveal2.jpeg"
                 alt="Gourja"
-                loading="lazy"
+                loading="eager"
+                            decoding="async"
             >
 
             <p class="last-copy reveal reveal-delay-4">
@@ -3035,11 +3044,9 @@ secretButton.addEventListener(
 ========================================================= */
 
 let videoHasEntered = false;
-let audioPlaybackArmed = false;
+let audioUnlocked = false;
 
-/* Called by the ENTER button, which is a real user gesture. */
-function armBirthdayAudio() {
-    audioPlaybackArmed = true;
+function tryUnlockVideoAudio() {
 
     if (!birthdayVideo) return;
 
@@ -3047,18 +3054,22 @@ function armBirthdayAudio() {
     birthdayVideo.removeAttribute("muted");
     birthdayVideo.volume = 1;
 
-    /* Unlock the media element while the browser still has the click gesture. */
-    const unlock = birthdayVideo.play();
+    const attempt = birthdayVideo.play();
 
-    if (unlock && typeof unlock.then === "function") {
-        unlock.then(function() {
+    if (attempt && typeof attempt.then === "function") {
+        attempt.then(function() {
+            audioUnlocked = true;
             birthdayVideo.pause();
             try { birthdayVideo.currentTime = 0; } catch (e) {}
-        }).catch(function() {});
+        }).catch(function() {
+            audioUnlocked = false;
+        });
     }
 }
 
-function showSoundFallback() {
+function createSoundButton() {
+
+    if (!birthdayVideo) return;
     if (document.getElementById("videoSoundButton")) return;
 
     const shell = birthdayVideo.closest(".video-shell");
@@ -3069,68 +3080,117 @@ function showSoundFallback() {
     button.type = "button";
     button.className = "video-sound-button";
     button.textContent = "🔊 Tap for sound";
-    shell.appendChild(button);
 
     button.addEventListener("click", function(event) {
+
+        event.preventDefault();
         event.stopPropagation();
+
         birthdayVideo.muted = false;
         birthdayVideo.removeAttribute("muted");
         birthdayVideo.volume = 1;
 
         birthdayVideo.play().then(function() {
+
+            audioUnlocked = true;
             button.classList.add("sound-unlocked");
-            setTimeout(function() { button.remove(); }, 450);
+
+            setTimeout(function() {
+                if (button.parentNode) button.remove();
+            }, 400);
+
         }).catch(function() {});
+
     });
+
+    shell.appendChild(button);
 }
 
 function playBirthdayVideo() {
+
     if (!birthdayVideo) return;
 
-    birthdayVideo.muted = false;
-    birthdayVideo.removeAttribute("muted");
     birthdayVideo.volume = 1;
 
-    const promise = birthdayVideo.play();
+    if (audioUnlocked) {
 
-    if (promise && typeof promise.catch === "function") {
-        promise.catch(function() {
-            /* Browser policy may block audible autoplay. Keep the video playing
-               and provide an explicit one-tap sound fallback. */
+        birthdayVideo.muted = false;
+        birthdayVideo.removeAttribute("muted");
+
+        const audiblePlay = birthdayVideo.play();
+
+        if (audiblePlay && typeof audiblePlay.catch === "function") {
+            audiblePlay.catch(function() {
+                createSoundButton();
+            });
+        }
+
+        return;
+    }
+
+    /* Best effort: try audible playback first. */
+    birthdayVideo.muted = false;
+    birthdayVideo.removeAttribute("muted");
+
+    const audiblePlay = birthdayVideo.play();
+
+    if (audiblePlay && typeof audiblePlay.then === "function") {
+
+        audiblePlay.then(function() {
+            audioUnlocked = true;
+        }).catch(function() {
+
+            /* Browser policy blocked sound. Fall back to silent autoplay
+               and provide a real one-tap sound button. */
             birthdayVideo.muted = true;
             birthdayVideo.setAttribute("muted", "");
-            const muted = birthdayVideo.play();
-            if (muted && typeof muted.catch === "function") muted.catch(function() {});
-            showSoundFallback();
+
+            const mutedPlay = birthdayVideo.play();
+            if (mutedPlay && typeof mutedPlay.catch === "function") {
+                mutedPlay.catch(function() {});
+            }
+
+            createSoundButton();
         });
     }
 }
 
-const videoObserver = new IntersectionObserver(function(entries) {
-    entries.forEach(function(entry) {
-        if (entry.isIntersecting) {
-            videoHasEntered = true;
+const videoObserver = new IntersectionObserver(
+    function(entries) {
 
-            const shell = birthdayVideo.closest(".video-shell");
-            if (shell) shell.classList.add("visible");
+        entries.forEach(function(entry) {
 
-            setTimeout(function() {
-                if (videoHasEntered) playBirthdayVideo();
-            }, 180);
-        } else if (videoHasEntered) {
-            birthdayVideo.pause();
-        }
-    });
-}, {
-    threshold: 0.28,
-    rootMargin: "0px 0px -8% 0px"
-});
+            if (entry.isIntersecting) {
+
+                videoHasEntered = true;
+
+                const shell = birthdayVideo.closest(".video-shell");
+                if (shell) shell.classList.add("visible");
+
+                setTimeout(function() {
+                    if (videoHasEntered) playBirthdayVideo();
+                }, 180);
+
+            } else if (videoHasEntered) {
+
+                birthdayVideo.pause();
+
+            }
+        });
+    },
+    {
+        threshold: 0.28,
+        rootMargin: "0px 0px -8% 0px"
+    }
+);
 
 videoObserver.observe(birthdayVideo);
 
 birthdayVideo.addEventListener("error", function() {
     const note = document.querySelector(".video-note");
-    if (note) note.textContent = "The little movie is taking a moment to load... ♡";
+    if (note) {
+        note.textContent = "The little movie could not be loaded. ♡";
+    }
 });
 
 /* =========================================================
