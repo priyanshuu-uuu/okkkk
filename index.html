@@ -624,6 +624,35 @@ a {
 }
 
 /* =========================================================
+   IMAGE LOAD POLISH
+========================================================= */
+
+.gallery-photo,
+.story-image,
+.letter-photo,
+.secret-image,
+.final-photo {
+    opacity: 0;
+    transform: scale(1.025);
+    transition:
+        opacity .7s ease,
+        transform 1s var(--ease-out);
+}
+
+.gallery-photo.asset-loaded,
+.story-image.asset-loaded,
+.letter-photo.asset-loaded,
+.secret-image.asset-loaded,
+.final-photo.asset-loaded {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.asset-missing {
+    opacity: .2 !important;
+}
+
+/* =========================================================
    11. PHOTO GALLERY
 ========================================================= */
 
@@ -745,11 +774,21 @@ a {
 }
 
 .video-shell {
+    opacity: 0;
+    transform: translateY(45px) scale(.985);
+    transition:
+        opacity .95s cubic-bezier(.2,.8,.2,1),
+        transform 1.05s cubic-bezier(.2,.8,.2,1);
     position: relative;
     overflow: hidden;
     border-radius: 25px;
     background: #171114;
     box-shadow: 0 40px 110px rgba(0, 0, 0, .35);
+}
+
+.video-shell.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
 }
 
 .main-video {
@@ -848,22 +887,101 @@ a {
 }
 
 .wish-card {
+    position: relative;
     min-height: 185px;
     padding: 29px;
-    border: 1px solid rgba(255,255,255,.52);
+    border: 1px solid rgba(255,255,255,.62);
     border-radius: 25px;
     background: rgba(255,255,255,.3);
     cursor: pointer;
+    overflow: hidden;
+    isolation: isolate;
+    transform: translateZ(0);
     transition:
-        transform .45s var(--ease-out),
+        transform .55s var(--ease-out),
         background .45s ease,
-        box-shadow .45s ease;
+        box-shadow .55s ease,
+        border-color .45s ease;
+}
+
+.wish-card::before {
+    content: "";
+    position: absolute;
+    width: 115px;
+    height: 115px;
+    right: -38px;
+    top: -42px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.34);
+    filter: blur(2px);
+    z-index: -1;
+    transition: transform .65s var(--ease-out), opacity .45s ease;
+}
+
+.wish-card::after {
+    content: "tap me ♡";
+    position: absolute;
+    right: 20px;
+    bottom: 16px;
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    opacity: .34;
+    transform: translateY(2px);
+    transition: opacity .3s ease, transform .3s ease;
 }
 
 .wish-card:hover {
-    background: rgba(255,255,255,.5);
-    box-shadow: 0 20px 45px rgba(79, 36, 53, .08);
-    transform: translateY(-7px);
+    background: rgba(255,255,255,.58);
+    box-shadow: 0 24px 55px rgba(79, 36, 53, .13);
+    transform: translateY(-9px) rotate(-.6deg);
+}
+
+.wish-card:nth-child(even):hover {
+    transform: translateY(-9px) rotate(.6deg);
+}
+
+.wish-card:active {
+    transform: translateY(-2px) scale(.985);
+}
+
+.wish-card:hover::before,
+.wish-card.open::before {
+    transform: scale(1.8);
+}
+
+.wish-card.open {
+    background: rgba(255,255,255,.68);
+    border-color: rgba(255,255,255,.9);
+    box-shadow: 0 28px 65px rgba(79, 36, 53, .16);
+    transform: translateY(-4px) scale(1.012);
+}
+
+.wish-card.open::after {
+    content: "opened ✨";
+    opacity: .52;
+    transform: translateY(0);
+}
+
+.wish-card .wish-icon {
+    display: inline-block;
+    transform-origin: center;
+    transition: transform .55s var(--ease-out);
+}
+
+.wish-card:hover .wish-icon {
+    transform: rotate(-9deg) scale(1.18);
+}
+
+.wish-card.open .wish-icon {
+    animation: wishPop .65s var(--ease-out);
+}
+
+@keyframes wishPop {
+    0%   { transform: scale(1) rotate(0); }
+    40%  { transform: scale(1.38) rotate(-12deg); }
+    70%  { transform: scale(.92) rotate(8deg); }
+    100% { transform: scale(1.12) rotate(0); }
 }
 
 .wish-icon {
@@ -1835,9 +1953,10 @@ a {
 
                         <img
                             class="gallery-photo"
-                            src="image/Yeah%20you%27re%20photogenic%20Unfortunatly.jpeg"
+                            src="image/Yeah%20you%27re%20photogenicUnfortunatly.jpeg"
                             alt="Yeah, you're photogenic"
-                            loading="lazy"
+                            loading="eager"
+                            fetchpriority="high"
                         >
 
                     </div>
@@ -1935,6 +2054,10 @@ a {
                 <video
                     class="main-video"
                     id="birthdayVideo"
+                    autoplay
+                    muted
+                    playsinline
+                    preload="auto"
                     controls
                     playsinline
                     preload="metadata"
@@ -2761,20 +2884,91 @@ function setupRevealObserver() {
 const wishCards =
     document.querySelectorAll(".wish-card");
 
-wishCards.forEach(
-    function(card) {
+wishCards.forEach(function(card) {
 
-        card.addEventListener(
-            "click",
-            function() {
+    card.addEventListener("click", function(event) {
 
-                card.classList.toggle("open");
+        const wasOpen = card.classList.contains("open");
 
+        /*
+           Keep the interaction tidy: only one card stays open
+           at a time, then allow the selected card to breathe.
+        */
+        wishCards.forEach(function(otherCard) {
+            if (otherCard !== card) {
+                otherCard.classList.remove("open");
             }
-        );
+        });
 
-    }
-);
+        card.classList.toggle("open", !wasOpen);
+
+        if (!wasOpen) {
+            card.animate(
+                [
+                    { transform: "translateY(-4px) scale(1.012)" },
+                    { transform: "translateY(-9px) scale(1.035) rotate(-.7deg)" },
+                    { transform: "translateY(-4px) scale(1.012)" }
+                ],
+                {
+                    duration: 620,
+                    easing: "cubic-bezier(.2,.9,.25,1)"
+                }
+            );
+        }
+
+        /*
+           Tiny decorative particles around the tapped card.
+           They are purely visual and remove themselves.
+        */
+        const rect = card.getBoundingClientRect();
+
+        for (let i = 0; i < 5; i++) {
+            const spark = document.createElement("span");
+
+            spark.textContent = ["♡", "✦", "·", "˚", "♥"][i];
+            spark.style.position = "fixed";
+            spark.style.left = (rect.left + rect.width * (.25 + Math.random() * .5)) + "px";
+            spark.style.top = (rect.top + rect.height * .35) + "px";
+            spark.style.zIndex = "9999";
+            spark.style.pointerEvents = "none";
+            spark.style.fontSize = (10 + Math.random() * 9) + "px";
+            spark.style.opacity = "0";
+            spark.style.color = "rgba(100, 47, 66, .65)";
+
+            document.body.appendChild(spark);
+
+            const dx = (Math.random() - .5) * 80;
+            const dy = -25 - Math.random() * 65;
+
+            spark.animate(
+                [
+                    { transform: "translate(0, 0) scale(.6)", opacity: 0 },
+                    { transform: "translate(0, -8px) scale(1)", opacity: .8, offset: .22 },
+                    { transform: `translate(${dx}px, ${dy}px) scale(.5)`, opacity: 0 }
+                ],
+                {
+                    duration: 720 + Math.random() * 240,
+                    easing: "cubic-bezier(.2,.75,.2,1)"
+                }
+            ).onfinish = function() {
+                spark.remove();
+            };
+        }
+
+    });
+
+    /* Keyboard accessibility */
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("role", "button");
+
+    card.addEventListener("keydown", function(event) {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            card.click();
+        }
+    });
+
+});
 
 
 /* =========================================================
@@ -2809,55 +3003,89 @@ secretButton.addEventListener(
 ========================================================= */
 
 /*
-   The video never autoplay starts unexpectedly.
-
-   It reveals with the same scroll system as the rest
-   of the experience and the visitor controls playback.
+   Scroll-triggered video:
+   - The video fades/slides in through .reveal.
+   - As soon as the video enters the viewport, it plays itself.
+   - It is muted so modern browsers allow autoplay.
+   - When it leaves the viewport, it pauses to avoid wasting
+     battery/data and keeps the experience clean.
 */
 
-birthdayVideo.addEventListener(
-    "play",
-    function() {
+let videoHasEntered = false;
 
-        /*
-           If the visitor starts the video,
-           pause it when they leave the video area.
-           This prevents the audio from continuing far
-           away from the video.
-        */
+function playBirthdayVideo() {
+    if (!birthdayVideo) return;
 
+    birthdayVideo.muted = true;
+    birthdayVideo.setAttribute("muted", "");
+    birthdayVideo.setAttribute("playsinline", "");
+
+    const promise = birthdayVideo.play();
+
+    if (promise && typeof promise.catch === "function") {
+        promise.catch(function() {
+            /*
+               Some browsers may still block autoplay.
+               A muted retry is made once on the next user
+               interaction without breaking the page.
+            */
+        });
     }
-);
+}
 
 const videoObserver =
     new IntersectionObserver(
-
         function(entries) {
+            entries.forEach(function(entry) {
 
-            entries.forEach(
-                function(entry) {
+                if (entry.isIntersecting) {
 
-                    if (!entry.isIntersecting) {
+                    videoHasEntered = true;
 
-                        if (!birthdayVideo.paused) {
-                            birthdayVideo.pause();
-                        }
+                    /* Ensure the reveal animation is active. */
+                    const shell = birthdayVideo.closest(".video-shell");
+                    if (shell) shell.classList.add("visible");
 
-                    }
+                    playBirthdayVideo();
+
+                } else if (videoHasEntered) {
+
+                    birthdayVideo.pause();
 
                 }
-            );
 
+            });
         },
-
         {
-            threshold: 0.05
+            threshold: 0.28,
+            rootMargin: "0px 0px -8% 0px"
         }
     );
 
-videoObserver.observe(
-    birthdayVideo
-);
+videoObserver.observe(birthdayVideo);
+
+/*
+   If autoplay was blocked before, the first touch/click/scroll
+   gives us another chance, still muted.
+*/
+["pointerdown", "touchstart", "keydown"].forEach(function(eventName) {
+    window.addEventListener(eventName, function() {
+        if (videoHasEntered && birthdayVideo.paused) {
+            playBirthdayVideo();
+        }
+    }, { passive: true });
+});
+
+/*
+   Helpful fallback if the MP4 fails to load.
+*/
+birthdayVideo.addEventListener("error", function() {
+    const note = document.querySelector(".video-note");
+    if (note) {
+        note.textContent =
+            "The little movie is taking a moment to load... ♡";
+    }
+});
 
 
 /* =========================================================
